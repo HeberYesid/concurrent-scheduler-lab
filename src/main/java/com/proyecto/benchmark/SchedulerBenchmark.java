@@ -4,19 +4,26 @@ import com.proyecto.domain.algorithm.AgingEngine;
 import com.proyecto.domain.algorithm.LinearAgingCalculator;
 import com.proyecto.domain.algorithm.MaxHeap;
 import com.proyecto.domain.algorithm.SchedulableProcess;
+import com.proyecto.domain.model.ExecutionRecord;
 import com.proyecto.domain.model.ProcessTask;
 import com.proyecto.domain.model.SchedulerConfig;
 import com.proyecto.domain.model.Result;
 import com.proyecto.domain.model.SchedulerError;
+import com.proyecto.domain.model.SchedulerMetrics;
 import com.proyecto.domain.model.SchedulerRun;
 import com.proyecto.domain.service.impl.AgingSchedulerService;
+import com.proyecto.domain.service.impl.StreamingMetrics;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.PriorityQueue;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
@@ -40,7 +47,7 @@ import org.openjdk.jmh.infra.Blackhole;
 @State(Scope.Benchmark)
 @Warmup(iterations = 3, time = 1, timeUnit = TimeUnit.SECONDS)
 @Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
-@Fork(1)
+@Fork(2)
 public class SchedulerBenchmark {
 
     @Param({"1000", "10000", "100000", "500000"})
@@ -55,7 +62,7 @@ public class SchedulerBenchmark {
     /**
      * Prepara el entorno antes de cada benchmark.
      */
-    @Setup
+    @Setup(Level.Iteration)
     public void setup() {
         Random random = new Random(42L);
         tasks = new ArrayList<>(n);
@@ -84,6 +91,21 @@ public class SchedulerBenchmark {
     }
 
     /**
+     * Mide un baseline con {@link PriorityQueue} estándar y prioridad estática.
+     *
+     * <p>Este baseline elimina el costo del aging para ofrecer un punto de comparación
+     * directo contra el scheduler principal, mientras que el costo del aging se mide
+     * de forma aislada en {@link #benchmarkAgingRebuild(Blackhole)}.</p>
+     *
+     * @param bh blackhole para consumir el resultado
+     */
+    @Benchmark
+    public void benchmarkBaselineCycle(Blackhole bh) {
+        Result<SchedulerRun, SchedulerError> result = runBaselineScheduler(tasks, config);
+        bh.consume(result);
+    }
+
+    /**
      * Mide el costo combinado de insertar todos los procesos en el heap y extraerlos.
      *
      * @param bh blackhole para consumir resultados intermedios
@@ -107,7 +129,7 @@ public class SchedulerBenchmark {
     @Benchmark
     public void benchmarkAgingRebuild(Blackhole bh) {
         MaxHeap<SchedulableProcess> heap = new MaxHeap<>(buildSchedulableProcesses());
-        agingEngine.applyAging(heap, 10_000L, config);
+        agingEngine.applyAging(heap, computeSafeBenchmarkTime(), config);
         bh.consume(heap.peekMax().orElse(null));
     }
 
@@ -122,6 +144,65 @@ public class SchedulerBenchmark {
     private SchedulableProcess toSchedulableProcess(ProcessTask task) {
         SchedulableProcess process = new SchedulableProcess(task);
         process.setEffectivePriority(calculator.calculate(task, task.arrivalTime(), config));
+        return process;
+    }
+
+    private long computeSafeBenchmarkTime() {
+        long maxArrivalTime = 0L;
+        for (ProcessTask task : tasks) {
+            if (task.arrivalTime() > maxArrivalTime) {
+                maxArrivalTime = task.arrivalTime();
+            }
+        }
+        return maxArrivalTime + config.agingInterval();
+    }
+
+    private Result<SchedulerRun, SchedulerError> runBaselineScheduler(
+            List<ProcessTask> processes,
+            SchedulerConfig schedulerConfig
+    ) {
+        if (processes == null || processes.isEmpty()) {
+            return Result.err(SchedulerError.EMPTY_PROCESS_LIST);
+        }
+
+        List<ProcessTask> sorted = new ArrayList<>(processes);
+        sorted.sort(Comparator.comparingLong(ProcessTask::arrivalTime));
+        PriorityQueue<SchedulableProcess> readyQueue =
+                new PriorityQueue<>(Collections.reverseOrder());
+        List<ExecutionRecord> executionTrace = new ArrayList<>();
+        StreamingMetrics metrics = new StreamingMetrics(schedulerConfig.maxAcceptableWait());
+
+        long now = 0L;
+        int nextIndex = 0;
+        while (nextIndex < sorted.size() || !readyQueue.isEmpty()) {
+            if (readyQueue.isEmpty() && nextIndex < sorted.size()) {
+                now = Math.max(now, sorted.get(nextIndex).arrivalTime());
+            }
+
+            while (nextIndex < sorted.size() && sorted.get(nextIndex).arrivalTime() <= now) {
+                readyQueue.add(toStaticPriorityProcess(sorted.get(nextIndex)));
+                nextIndex++;
+            }
+
+            SchedulableProcess nextProcess = readyQueue.remove();
+
+            ProcessTask task = nextProcess.getTask();
+            long startTime = now;
+            long endTime = startTime + task.burstTime();
+            long waitTime = startTime - task.arrivalTime();
+            ExecutionRecord record = new ExecutionRecord(task.id(), startTime, endTime, waitTime);
+            executionTrace.add(record);
+            metrics.recordExecution(record);
+            now = endTime;
+        }
+
+        SchedulerMetrics schedulerMetrics = metrics.computeMetrics(now);
+        return Result.ok(new SchedulerRun(schedulerMetrics, executionTrace));
+    }
+
+    private SchedulableProcess toStaticPriorityProcess(ProcessTask task) {
+        SchedulableProcess process = new SchedulableProcess(task);
+        process.setEffectivePriority(task.basePriority());
         return process;
     }
 }

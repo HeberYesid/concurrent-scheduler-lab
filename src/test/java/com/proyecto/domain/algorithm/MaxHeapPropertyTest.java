@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 public class MaxHeapPropertyTest {
 
-    @Property
+    @Property(seed = "2026052101")
     void heapPropertyIsMaintainedAfterInsertions(@ForAll("listOfIntegers") List<Integer> list) {
         MaxHeap<Integer> heap = new MaxHeap<>();
         for (Integer val : list) {
@@ -25,13 +25,13 @@ public class MaxHeapPropertyTest {
         verifyHeapInvariant(heap);
     }
 
-    @Property
+    @Property(seed = "2026052102")
     void floydHeapifyCreatesValidHeap(@ForAll("listOfIntegers") List<Integer> list) {
         MaxHeap<Integer> heap = new MaxHeap<>(list);
         verifyHeapInvariant(heap);
     }
 
-    @Property
+    @Property(seed = "2026052103")
     void extractedElementsAreSortedDescending(@ForAll("listOfIntegers") List<Integer> list) {
         MaxHeap<Integer> heap = new MaxHeap<>(list);
         Integer last = null;
