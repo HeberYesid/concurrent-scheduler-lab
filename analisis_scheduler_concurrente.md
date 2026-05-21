@@ -1143,6 +1143,39 @@ flowchart TB
 
 ## 12. Resumen Ejecutivo
 
+### 12.1 Evidencia JMH registrada en el repositorio
+
+La salida textual completa de JMH se conserva en:
+
+- `benchmark-results.txt`
+
+La corrida registrada se ejecutó con:
+
+- `@Param({"1000", "10000", "100000", "500000"})`
+- `@Warmup(iterations = 3, time = 1)`
+- `@Measurement(iterations = 5, time = 1)`
+- `@Fork(2)` en el benchmark productivo
+
+Para la evidencia incluida en el repositorio se realizó una corrida corta de validación
+(`-wi 1 -i 1 -f 1 -r 1s -w 1s`) con el fin de dejar resultados reproducibles sin
+convertir el repositorio en una ejecución de varias horas.
+
+#### Resumen de la corrida almacenada
+
+| Benchmark | N=1,000 | N=10,000 | N=100,000 | N=500,000 |
+|---|---:|---:|---:|---:|
+| `benchmarkAgingRebuild` | 0.039 ms/op | 0.599 ms/op | 12.167 ms/op | 100.565 ms/op |
+| `benchmarkBaselineCycle` | 0.291 ms/op | 4.372 ms/op | 122.692 ms/op | 1193.310 ms/op |
+| `benchmarkInsertAndExtract` | 0.146 ms/op | 2.437 ms/op | 50.338 ms/op | 694.156 ms/op |
+| `benchmarkFullCycle` | 3.214 ms/op | 177.022 ms/op | 25112.996 ms/op | fallo de VM forked en corrida corta |
+
+**Lectura técnica**:
+
+- `insertAndExtract` crece de forma coherente con el costo acumulado esperado del heap.
+- `agingRebuild` muestra el costo lineal del rebuild periódico.
+- `baselineCycle` sirve como comparación con una implementación basada en `PriorityQueue` estándar y prioridad estática.
+- `fullCycle` a `N=500000` excedió lo razonable para una corrida corta de validación; el resultado quedó registrado como fallo de la VM forked en `benchmark-results.txt`.
+
 | Aspecto | Valor |
 |---|---|
 | **Estructura elegida** | Binary Max-Heap (array) |
