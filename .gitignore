@@ -1,0 +1,28 @@
+# Maven / Java build output
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# IDEs
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+out/
+bin/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+.jqwik-database
+*.log
+*.tmp
+*.swp
+*.swo
+hs_err_pid*
+replay_pid*
