@@ -81,7 +81,7 @@ Un entorno de ejecución concurrente recibe procesos/tareas con distintos nivele
 
 | Salida | Tipo | Condición de corrección |
 |---|---|---|
-| **Secuencia de ejecución** | `List<ExecutionRecord>` | Cada record contiene `(processId, startTime, endTime)`. Todo proceso ingresado debe aparecer exactamente una vez. |
+| **Secuencia de ejecución** | `List<ExecutionRecord>` dentro de `SchedulerRun` | Cada record contiene `(processId, startTime, endTime)`. Todo proceso ingresado debe aparecer exactamente una vez. |
 | **Throughput** | `double` (procesos/segundo) | `throughput = totalProcessesCompleted / totalElapsedTime`. Debe ser > 0 si N > 0. |
 | **Tiempo de espera promedio** | `double` (ms) | `avgWait = Σ(startTime_i - arrivalTime_i) / N`. Debe ser ≥ 0. |
 | **Tasa de starvation** | `double` [0.0, 1.0] | `starvationRate = processesWaitingAboveThreshold / N`. Un proceso se considera "starved" si espera más de `maxAcceptableWait` ms (configurable). Con aging, esta tasa debe tender a 0 para α > 0. |
@@ -568,7 +568,8 @@ com.proyecto/
 │   │   ├── ProcessTask.java         ← Record inmutable (id, basePriority, arrivalTime, burstTime)
 │   │   ├── ExecutionRecord.java     ← Record (processId, startTime, endTime, waitTime)
 │   │   ├── SchedulerConfig.java     ← Value Object (agingFactor, agingInterval, maxWait)
-│   │   └── SchedulerMetrics.java    ← Value Object (throughput, avgWaitTime, starvationRate)
+│   │   ├── SchedulerMetrics.java    ← Value Object (throughput, avgWaitTime, starvationRate)
+│   │   └── SchedulerRun.java        ← Corrida completa (metrics + executionTrace)
 │   │
 │   ├── algorithm/                   ← Algoritmo principal + variantes
 │   │   ├── MaxHeap.java             ← Binary max-heap sobre array
@@ -576,7 +577,7 @@ com.proyecto/
 │   │   └── PriorityCalculator.java  ← Cálculo de effectivePriority (Strategy)
 │   │
 │   └── service/                     ← Lógica de negocio + contratos (interfaces)
-│       ├── SchedulerService.java    ← Interface: schedule(List<ProcessTask>) → SchedulerMetrics
+│       ├── SchedulerService.java    ← Interface: schedule(List<ProcessTask>) → SchedulerRun
 │       ├── MetricsCollector.java    ← Interface: record(ExecutionRecord), compute() → Metrics
 │       ├── ProcessRepository.java   ← Interface: findAll(), save(), deleteById()
 │       └── impl/
@@ -595,9 +596,7 @@ com.proyecto/
 │       └── JsonOutputFormatter.java      ← Formatea métricas como JSON
 │
 ├── benchmark/                       ← JMH (separado de src/main)
-│   ├── HeapBenchmark.java           ← insert/extractMax aislados
-│   ├── AgingBenchmark.java          ← Floyd rebuild para N variable
-│   └── SchedulerBenchmark.java      ← Ciclo completo end-to-end
+│   └── SchedulerBenchmark.java      ← benchmarkFullCycle / benchmarkInsertAndExtract / benchmarkAgingRebuild
 │
 └── docs/
     └── adr/                         ← Architecture Decision Records
@@ -644,7 +643,7 @@ graph TB
     end
 
     subgraph "benchmark"
-        JMH[SchedulerBenchmark<br/>HeapBenchmark<br/>AgingBenchmark]
+        JMH[SchedulerBenchmark<br/>benchmarkFullCycle<br/>benchmarkInsertAndExtract<br/>benchmarkAgingRebuild]
     end
 
     CSV -.->|parsea| PT
@@ -906,7 +905,7 @@ graph LR
 
     S1 -->|"List ProcessTask"| S2
     S2 -->|"List ProcessTask validated"| S3
-    S3 -->|"List ExecutionRecord"| S4
+    S3 -->|"SchedulerRun"| S4
     S4 -->|"SchedulerMetrics"| S5
     S5 -->|"String (CSV/JSON/Console)"| OUT[Output]
 
@@ -920,11 +919,11 @@ graph LR
 Cada stage es una **función pura** (excepto S3 que tiene estado mutable interno — el heap). El pipeline se compone así:
 
 ```
-Result<SchedulerMetrics> result = Pipeline.of(processes)
+Result<SchedulerRun> result = Pipeline.of(processes)
     .then(parser::parse)             // Stage 1: raw → model
     .then(validator::validate)       // Stage 2: check contracts
     .then(scheduler::schedule)       // Stage 3: core algorithm
-    .then(metrics::collect)          // Stage 4: compute results
+    .then(run -> run.metrics())      // Stage 4: extract metrics
     .then(formatter::format);        // Stage 5: produce output
 ```
 
