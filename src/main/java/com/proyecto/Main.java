@@ -9,6 +9,7 @@ import com.proyecto.domain.model.Result;
 import com.proyecto.domain.model.SchedulerConfig;
 import com.proyecto.domain.model.SchedulerError;
 import com.proyecto.domain.model.SchedulerMetrics;
+import com.proyecto.domain.model.SchedulerRun;
 import com.proyecto.domain.service.SchedulerService;
 import com.proyecto.domain.service.impl.AgingSchedulerService;
 import com.proyecto.infrastructure.io.ConsoleOutputFormatter;
@@ -70,11 +71,11 @@ public final class Main {
     ) {
         SchedulerService scheduler = new AgingSchedulerService(calculator);
         long startSimTime = System.currentTimeMillis();
-        Result<SchedulerMetrics, SchedulerError> result = scheduler.schedule(tasks, config);
+        Result<SchedulerRun, SchedulerError> result = scheduler.schedule(tasks, config);
         long endSimTime = System.currentTimeMillis();
 
         if (result.isOk()) {
-            SchedulerMetrics metrics = result.getValue();
+            SchedulerMetrics metrics = result.getValue().metrics();
             System.out.println(formatter.format(metrics));
             System.out.printf("Simulación completada en %d ms reales de CPU.\n", (endSimTime - startSimTime));
         } else {

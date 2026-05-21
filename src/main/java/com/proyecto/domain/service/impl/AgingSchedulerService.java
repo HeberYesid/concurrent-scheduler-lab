@@ -11,6 +11,7 @@ import com.proyecto.domain.model.Result;
 import com.proyecto.domain.model.SchedulerConfig;
 import com.proyecto.domain.model.SchedulerError;
 import com.proyecto.domain.model.SchedulerMetrics;
+import com.proyecto.domain.model.SchedulerRun;
 import com.proyecto.domain.service.SchedulerService;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -49,7 +50,7 @@ public final class AgingSchedulerService implements SchedulerService {
     }
 
     @Override
-    public Result<SchedulerMetrics, SchedulerError> schedule(List<ProcessTask> processes, SchedulerConfig config) {
+    public Result<SchedulerRun, SchedulerError> schedule(List<ProcessTask> processes, SchedulerConfig config) {
         if (processes == null || processes.isEmpty()) {
             return Result.err(SchedulerError.EMPTY_PROCESS_LIST);
         }
@@ -64,9 +65,10 @@ public final class AgingSchedulerService implements SchedulerService {
         sorted.sort(Comparator.comparingLong(ProcessTask::arrivalTime));
 
         StreamingMetrics metrics = new StreamingMetrics(config.maxAcceptableWait());
-        long finalTime = runSimulation(sorted, config, metrics);
+        SimulationOutcome outcome = runSimulation(sorted, config, metrics);
+        SchedulerMetrics schedulerMetrics = metrics.computeMetrics(outcome.finalTime());
 
-        return Result.ok(metrics.computeMetrics(finalTime));
+        return Result.ok(new SchedulerRun(schedulerMetrics, outcome.executionTrace()));
     }
 
     // ── Helper Methods (Complejidad Ciclomática <= 10) ──────────────
@@ -81,19 +83,20 @@ public final class AgingSchedulerService implements SchedulerService {
         return false;
     }
 
-    private long runSimulation(List<ProcessTask> sorted, SchedulerConfig config, StreamingMetrics metrics) {
+    private SimulationOutcome runSimulation(List<ProcessTask> sorted, SchedulerConfig config, StreamingMetrics metrics) {
         long now = 0;
         int nextIndex = 0;
         long lastAgingTime = 0;
         MaxHeap<SchedulableProcess> heap = new MaxHeap<>();
+        List<ExecutionRecord> executionTrace = new ArrayList<>();
 
         while (nextIndex < sorted.size() || heap.size() > 0) {
             now = adjustLogicalClock(heap, sorted, nextIndex, now);
             nextIndex = insertArrivedProcesses(heap, sorted, nextIndex, now, config);
             lastAgingTime = applyAgingIfRequired(heap, now, lastAgingTime, config);
-            now = executeNextProcess(heap, now, metrics);
+            now = executeNextProcess(heap, now, metrics, executionTrace);
         }
-        return now;
+        return new SimulationOutcome(now, executionTrace);
     }
 
     private long adjustLogicalClock(MaxHeap<SchedulableProcess> heap, List<ProcessTask> sorted, int index, long now) {
@@ -138,7 +141,12 @@ public final class AgingSchedulerService implements SchedulerService {
         return lastAgingTime;
     }
 
-    private long executeNextProcess(MaxHeap<SchedulableProcess> heap, long now, StreamingMetrics metrics) {
+    private long executeNextProcess(
+            MaxHeap<SchedulableProcess> heap,
+            long now,
+            StreamingMetrics metrics,
+            List<ExecutionRecord> executionTrace
+    ) {
         Optional<SchedulableProcess> nextOpt = heap.extractMax();
         if (nextOpt.isPresent()) {
             SchedulableProcess sp = nextOpt.get();
@@ -146,9 +154,14 @@ public final class AgingSchedulerService implements SchedulerService {
             long startTime = now;
             long endTime = startTime + task.burstTime();
             long waitTime = startTime - task.arrivalTime();
-            metrics.recordExecution(new ExecutionRecord(task.id(), startTime, endTime, waitTime));
+            ExecutionRecord record = new ExecutionRecord(task.id(), startTime, endTime, waitTime);
+            metrics.recordExecution(record);
+            executionTrace.add(record);
             return endTime;
         }
         return now;
+    }
+
+    private record SimulationOutcome(long finalTime, List<ExecutionRecord> executionTrace) {
     }
 }

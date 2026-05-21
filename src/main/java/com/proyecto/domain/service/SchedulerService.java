@@ -4,7 +4,7 @@ import com.proyecto.domain.model.ProcessTask;
 import com.proyecto.domain.model.Result;
 import com.proyecto.domain.model.SchedulerConfig;
 import com.proyecto.domain.model.SchedulerError;
-import com.proyecto.domain.model.SchedulerMetrics;
+import com.proyecto.domain.model.SchedulerRun;
 import java.util.List;
 
 /**
@@ -19,7 +19,7 @@ public interface SchedulerService {
      *
      * @param processes lista de procesos a planificar, no nula
      * @param config    configuración de parámetros del planificador, no nula
-     * @return {@link Result} con las métricas calculadas o el error correspondiente
+     * @return {@link Result} con la corrida completa calculada o el error correspondiente
      */
-    Result<SchedulerMetrics, SchedulerError> schedule(List<ProcessTask> processes, SchedulerConfig config);
+    Result<SchedulerRun, SchedulerError> schedule(List<ProcessTask> processes, SchedulerConfig config);
 }

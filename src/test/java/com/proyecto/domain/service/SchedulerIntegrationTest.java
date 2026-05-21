@@ -6,6 +6,7 @@ import com.proyecto.domain.model.Result;
 import com.proyecto.domain.model.SchedulerConfig;
 import com.proyecto.domain.model.SchedulerError;
 import com.proyecto.domain.model.SchedulerMetrics;
+import com.proyecto.domain.model.SchedulerRun;
 import com.proyecto.domain.service.impl.AgingSchedulerService;
 import com.proyecto.infrastructure.io.CsvProcessParser;
 import com.proyecto.infrastructure.persistence.InMemoryProcessRepository;
@@ -68,18 +69,18 @@ public class SchedulerIntegrationTest {
         SchedulerConfig config = SchedulerConfig.withDefaults();
 
         // Lista vacía
-        Result<SchedulerMetrics, SchedulerError> r1 = scheduler.schedule(List.of(), config);
+        Result<SchedulerRun, SchedulerError> r1 = scheduler.schedule(List.of(), config);
         assertTrue(r1.isErr());
         assertEquals(SchedulerError.EMPTY_PROCESS_LIST, r1.getError());
 
         // Configuración nula
-        Result<SchedulerMetrics, SchedulerError> r2 = scheduler.schedule(
+        Result<SchedulerRun, SchedulerError> r2 = scheduler.schedule(
                 List.of(new ProcessTask(1L, 20, 0L, 100L)), null);
         assertTrue(r2.isErr());
         assertEquals(SchedulerError.INVALID_CONFIGURATION, r2.getError());
 
         // ID duplicado
-        Result<SchedulerMetrics, SchedulerError> r3 = scheduler.schedule(
+        Result<SchedulerRun, SchedulerError> r3 = scheduler.schedule(
                 List.of(
                         new ProcessTask(1L, 20, 0L, 100L),
                         new ProcessTask(1L, 10, 50L, 200L)
@@ -102,9 +103,10 @@ public class SchedulerIntegrationTest {
                 new ProcessTask(3L, 35, 20L, 100L)  // Llega a t=20. Espera en cola
         );
 
-        Result<SchedulerMetrics, SchedulerError> result = scheduler.schedule(processes, config);
+        Result<SchedulerRun, SchedulerError> result = scheduler.schedule(processes, config);
         assertTrue(result.isOk());
-        SchedulerMetrics metrics = result.getValue();
+        SchedulerRun run = result.getValue();
+        SchedulerMetrics metrics = run.metrics();
 
         assertEquals(3, metrics.processedCount());
         // t_total = 350 ms
@@ -118,5 +120,16 @@ public class SchedulerIntegrationTest {
         
         // throughput = 3 procesos / 0.35 segundos = 8.5714 procesos/segundo
         assertEquals(3.0 / 0.35, metrics.throughput(), 0.001);
+
+        assertEquals(3, run.executionTrace().size());
+        assertEquals(1L, run.executionTrace().get(0).processId());
+        assertEquals(0L, run.executionTrace().get(0).startTime());
+        assertEquals(200L, run.executionTrace().get(0).endTime());
+        assertEquals(2L, run.executionTrace().get(1).processId());
+        assertEquals(200L, run.executionTrace().get(1).startTime());
+        assertEquals(250L, run.executionTrace().get(1).endTime());
+        assertEquals(3L, run.executionTrace().get(2).processId());
+        assertEquals(250L, run.executionTrace().get(2).startTime());
+        assertEquals(350L, run.executionTrace().get(2).endTime());
     }
 }

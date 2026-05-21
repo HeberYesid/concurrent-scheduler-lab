@@ -1,11 +1,14 @@
 package com.proyecto.benchmark;
 
+import com.proyecto.domain.algorithm.AgingEngine;
 import com.proyecto.domain.algorithm.LinearAgingCalculator;
+import com.proyecto.domain.algorithm.MaxHeap;
+import com.proyecto.domain.algorithm.SchedulableProcess;
 import com.proyecto.domain.model.ProcessTask;
 import com.proyecto.domain.model.SchedulerConfig;
-import com.proyecto.domain.model.SchedulerMetrics;
 import com.proyecto.domain.model.Result;
 import com.proyecto.domain.model.SchedulerError;
+import com.proyecto.domain.model.SchedulerRun;
 import com.proyecto.domain.service.impl.AgingSchedulerService;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +49,8 @@ public class SchedulerBenchmark {
     private List<ProcessTask> tasks;
     private SchedulerConfig config;
     private AgingSchedulerService schedulerService;
+    private LinearAgingCalculator calculator;
+    private AgingEngine agingEngine;
 
     /**
      * Prepara el entorno antes de cada benchmark.
@@ -62,7 +67,9 @@ public class SchedulerBenchmark {
             tasks.add(new ProcessTask(id, priority, arrivalTime, burstTime));
         }
         config = new SchedulerConfig(0.5, 100, 5000);
-        schedulerService = new AgingSchedulerService(new LinearAgingCalculator());
+        calculator = new LinearAgingCalculator();
+        agingEngine = new AgingEngine(calculator);
+        schedulerService = new AgingSchedulerService(calculator);
     }
 
     /**
@@ -72,7 +79,49 @@ public class SchedulerBenchmark {
      */
     @Benchmark
     public void benchmarkFullCycle(Blackhole bh) {
-        Result<SchedulerMetrics, SchedulerError> result = schedulerService.schedule(tasks, config);
+        Result<SchedulerRun, SchedulerError> result = schedulerService.schedule(tasks, config);
         bh.consume(result);
+    }
+
+    /**
+     * Mide el costo combinado de insertar todos los procesos en el heap y extraerlos.
+     *
+     * @param bh blackhole para consumir resultados intermedios
+     */
+    @Benchmark
+    public void benchmarkInsertAndExtract(Blackhole bh) {
+        MaxHeap<SchedulableProcess> heap = new MaxHeap<>(Math.max(16, tasks.size()));
+        for (ProcessTask task : tasks) {
+            heap.insert(toSchedulableProcess(task));
+        }
+        while (heap.size() > 0) {
+            bh.consume(heap.extractMax().orElseThrow());
+        }
+    }
+
+    /**
+     * Mide el costo de recalcular prioridades y reconstruir el heap.
+     *
+     * @param bh blackhole para consumir el estado final del heap
+     */
+    @Benchmark
+    public void benchmarkAgingRebuild(Blackhole bh) {
+        MaxHeap<SchedulableProcess> heap = new MaxHeap<>(buildSchedulableProcesses());
+        agingEngine.applyAging(heap, 10_000L, config);
+        bh.consume(heap.peekMax().orElse(null));
+    }
+
+    private List<SchedulableProcess> buildSchedulableProcesses() {
+        List<SchedulableProcess> processes = new ArrayList<>(tasks.size());
+        for (ProcessTask task : tasks) {
+            processes.add(toSchedulableProcess(task));
+        }
+        return processes;
+    }
+
+    private SchedulableProcess toSchedulableProcess(ProcessTask task) {
+        SchedulableProcess process = new SchedulableProcess(task);
+        process.setEffectivePriority(calculator.calculate(task, task.arrivalTime(), config));
+        return process;
     }
 }
