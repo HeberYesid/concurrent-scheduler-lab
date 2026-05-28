@@ -43,6 +43,14 @@ mvn clean package
 
 La clase principal es `com.proyecto.Main`.
 
+En PowerShell, el argumento del plugin debe ir entre comillas:
+
+```powershell
+mvn -q -DskipTests compile exec:java "-Dexec.mainClass=com.proyecto.Main"
+```
+
+En bash o shells compatibles, tambien funciona la forma clasica:
+
 ```bash
 mvn -q -DskipTests compile exec:java -Dexec.mainClass=com.proyecto.Main
 ```
