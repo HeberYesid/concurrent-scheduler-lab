@@ -1,0 +1,112 @@
+.simulation-form {
+  background: #1e1e2e;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.simulation-form h2 {
+  margin: 0 0 20px;
+  font-size: 1.25rem;
+  color: #cdd6f4;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #a6adc8;
+  font-size: 0.85rem;
+}
+
+.form-grid label span {
+  font-weight: 600;
+}
+
+.form-grid input[type="number"] {
+  background: #313244;
+  border: 1px solid #45475a;
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #cdd6f4;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-grid input[type="number"]:focus {
+  border-color: #89b4fa;
+}
+
+.form-grid input[type="range"] {
+  accent-color: #89b4fa;
+}
+
+.form-grid small {
+  color: #f5c2e7;
+  font-size: 0.8rem;
+}
+
+fieldset {
+  border: 1px solid #45475a;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+fieldset legend {
+  color: #cdd6f4;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0 8px;
+}
+
+.strategy-checkboxes {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #a6adc8;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  accent-color: #89b4fa;
+  width: 16px;
+  height: 16px;
+}
+
+.run-button {
+  width: 100%;
+  padding: 12px;
+  background: #89b4fa;
+  color: #1e1e2e;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.run-button:hover:not(:disabled) {
+  background: #74c7ec;
+}
+
+.run-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

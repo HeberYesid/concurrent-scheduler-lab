@@ -5,6 +5,13 @@
                              https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.3.1</version>
+        <relativePath/>
+    </parent>
+
     <groupId>com.proyecto</groupId>
     <artifactId>scheduler-concurrente</artifactId>
     <version>1.0-SNAPSHOT</version>
@@ -12,13 +19,10 @@
 
     <name>Scheduler Concurrente</name>
     <description>
-        Scheduler de procesos concurrente con aging dinámico,
-        heap binario y pipeline de ejecución.
+        Scheduler de procesos concurrente con aging dinamico,
+        heap binario y pipeline de ejecucion.
     </description>
 
-    <!-- ══════════════════════════════════════════════════════════ -->
-    <!--  PROPERTIES                                                -->
-    <!-- ══════════════════════════════════════════════════════════ -->
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -28,11 +32,12 @@
         <jmh.version>1.37</jmh.version>
     </properties>
 
-    <!-- ══════════════════════════════════════════════════════════ -->
-    <!--  DEPENDENCIES                                              -->
-    <!-- ══════════════════════════════════════════════════════════ -->
     <dependencies>
-        <!-- JUnit 5 — test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
@@ -40,7 +45,6 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- jqwik — property-based testing -->
         <dependency>
             <groupId>net.jqwik</groupId>
             <artifactId>jqwik</artifactId>
@@ -48,7 +52,6 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- JMH — microbenchmarking -->
         <dependency>
             <groupId>org.openjdk.jmh</groupId>
             <artifactId>jmh-core</artifactId>
@@ -61,13 +64,9 @@
         </dependency>
     </dependencies>
 
-    <!-- ══════════════════════════════════════════════════════════ -->
-    <!--  BUILD                                                     -->
-    <!-- ══════════════════════════════════════════════════════════ -->
     <build>
         <pluginManagement>
             <plugins>
-                <!-- ── Compiler ─────────────────────────────── -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
@@ -86,7 +85,6 @@
                     </configuration>
                 </plugin>
 
-                <!-- ── Surefire (JUnit Platform + jqwik) ───── -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
@@ -114,7 +112,6 @@
                     </dependencies>
                 </plugin>
 
-                <!-- ── JaCoCo ──────────────────────────────── -->
                 <plugin>
                     <groupId>org.jacoco</groupId>
                     <artifactId>jacoco-maven-plugin</artifactId>
@@ -123,8 +120,10 @@
                         <excludes>
                             <exclude>com/proyecto/benchmark/**</exclude>
                             <exclude>com/proyecto/Main.class</exclude>
+                            <exclude>com/proyecto/ConcurrentSchedulerApplication.class</exclude>
                             <exclude>**/jmh_generated/**</exclude>
                             <exclude>com/proyecto/infrastructure/io/**</exclude>
+                            <exclude>com/proyecto/web/**</exclude>
                         </excludes>
                     </configuration>
                     <executions>
@@ -165,7 +164,6 @@
                     </executions>
                 </plugin>
 
-                <!-- ── PIT (mutation testing) ──────────────── -->
                 <plugin>
                     <groupId>org.pitest</groupId>
                     <artifactId>pitest-maven</artifactId>
@@ -189,7 +187,6 @@
                     </configuration>
                 </plugin>
 
-                <!-- ── PMD ─────────────────────────────────── -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-pmd-plugin</artifactId>
@@ -203,7 +200,6 @@
                     </configuration>
                 </plugin>
 
-                <!-- ── Build Helper ────────────────────────── -->
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>build-helper-maven-plugin</artifactId>
@@ -213,6 +209,13 @@
         </pluginManagement>
 
         <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.proyecto.ConcurrentSchedulerApplication</mainClass>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>

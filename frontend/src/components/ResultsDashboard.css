@@ -1,0 +1,84 @@
+.dashboard {
+  background: #1e1e2e;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.dashboard h2 {
+  margin: 0 0 4px;
+  font-size: 1.25rem;
+  color: #cdd6f4;
+}
+
+.dashboard h3 {
+  margin: 24px 0 12px;
+  font-size: 1rem;
+  color: #a6adc8;
+}
+
+.duration {
+  font-size: 0.8rem;
+  color: #6c7086;
+  font-weight: 400;
+}
+
+.metrics-table-wrapper {
+  overflow-x: auto;
+  margin-top: 16px;
+}
+
+.metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.metrics-table th {
+  background: #313244;
+  color: #a6adc8;
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid #45475a;
+}
+
+.metrics-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #313244;
+  color: #cdd6f4;
+}
+
+.strategy-cell {
+  font-weight: 600;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.badge-linear {
+  background: rgba(137, 180, 250, 0.2);
+  color: #89b4fa;
+}
+
+.badge-exponential {
+  background: rgba(166, 227, 161, 0.2);
+  color: #a6e3a1;
+}
+
+.badge-step {
+  background: rgba(245, 194, 231, 0.2);
+  color: #f5c2e7;
+}
+
+.error-cell {
+  color: #f38ba8;
+}
+
+.chart-container {
+  margin-bottom: 8px;
+}
